@@ -45,6 +45,7 @@ const ManagePatient = () => {
   };
 
   const columns = [
+  
     { title: 'Name', dataIndex: 'name' },
     { title: 'Treatment', dataIndex: 'Treatment' },
     { title: 'Email Address', dataIndex: 'email_address' },

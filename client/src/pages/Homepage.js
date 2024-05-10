@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Homepage = () => {
   const [itemData, setItemData] = useState([]);
+  const [selectedTreatments, setSelectedTreatments] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,7 +24,7 @@ const Homepage = () => {
   }, []);
 
   const handleAddTreatment = (treatment) => {
-    navigate('/Bills', { state: { treatment } });
+    setSelectedTreatments([...selectedTreatments, treatment]);
   };
 
   return (
@@ -37,6 +38,9 @@ const Homepage = () => {
           </Col>
         ))}
       </Row>
+      <Button type="primary" onClick={() => navigate('/Bills', { state: { treatments: selectedTreatments } })}>
+        Go to Bill
+      </Button>
     </DefaultLayout>
   );
 };
