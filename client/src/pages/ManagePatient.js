@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DefaultLayout from '../components/DefaultLayout';
 import axios from 'axios';
 import { DeleteOutlined, EditOutlined, SearchOutlined } from "@ant-design/icons";
-import { Table, Button, Modal, Form, Input, message, Select } from 'antd';
-
+import { Table, Button, Modal, Form, Input, message ,Select} from 'antd';
+import jsPDF from 'jspdf';
+import "jspdf-autotable";
 
 const ManagePatient = () => {
   const [patients, setPatients] = useState([]);
@@ -11,6 +12,8 @@ const ManagePatient = () => {
   const [editPatient, setEditPatient] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+  const [selectedPatients, setSelectedPatients] = useState([]);
+  const tableRef = useRef(null);
 
   useEffect(() => {
     getAllPatients();
@@ -44,8 +47,64 @@ const ManagePatient = () => {
     }
   };
 
+  const handleSelectPatient = (patientId) => {
+    const isSelected = selectedPatients.includes(patientId);
+    if (isSelected) {
+      setSelectedPatients(selectedPatients.filter(id => id !== patientId));
+    } else {
+      setSelectedPatients([...selectedPatients, patientId]);
+    }
+  };
+  const handleSubmit = async (value) => {
+    if (editPatient === null) {
+      try {
+        await axios.post("/api/patients/add-patients", value);
+        message.success("Added Successfully");
+        setPopupModal(false);
+        getAllPatients();
+      } catch (error) {
+        message.error("Something went wrong");
+        console.log(error);
+      }
+    } else {
+      try {
+        await axios.put(`/api/patients/edit-patients/${editPatient._id}`, value);
+        message.success("Updated Successfully");
+        setPopupModal(false);
+        getAllPatients();
+      } catch (error) {
+        message.error("Something went wrong");
+        console.log(error);
+      }
+    }
+  };
+
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    const tableData = searchResults
+      .filter(patient => selectedPatients.includes(patient._id))
+      .map(patient => [patient.name, patient.Treatment, patient.email_address, patient.phone_no, patient.price]);
+
+    doc.autoTable({
+      head: [['Name', 'Treatment', 'Email Address', 'Phone No', 'Price']],
+      body: tableData,
+    });
+
+    doc.save('patients_report.pdf');
+  };
+
   const columns = [
-  
+    {
+      title: 'Select',
+      dataIndex: '_id',
+      render: (patientId) => (
+        <input
+          type="checkbox"
+          checked={selectedPatients.includes(patientId)}
+          onChange={() => handleSelectPatient(patientId)}
+        />
+      ),
+    },
     { title: 'Name', dataIndex: 'name' },
     { title: 'Treatment', dataIndex: 'Treatment' },
     { title: 'Email Address', dataIndex: 'email_address' },
@@ -72,29 +131,6 @@ const ManagePatient = () => {
     },
   ];
 
-  const handleSubmit = async (value) => {
-    if (editPatient === null) {
-      try {
-        await axios.post("/api/patients/add-patients", value);
-        message.success("Added Successfully");
-        setPopupModal(false);
-        getAllPatients();
-      } catch (error) {
-        message.error("Something went wrong");
-        console.log(error);
-      }
-    } else {
-      try {
-        await axios.put(`/api/patients/edit-patients/${editPatient._id}`, value);
-        message.success("Updated Successfully");
-        setPopupModal(false);
-        getAllPatients();
-      } catch (error) {
-        message.error("Something went wrong");
-        console.log(error);
-      }
-    }
-  };
 
   return (
     <DefaultLayout>
@@ -117,10 +153,18 @@ const ManagePatient = () => {
           }}>
             Add Patient
           </Button>
+          <Button type="primary" onClick={generatePDF} style={{ marginLeft: '24px' }}>
+            Generate & Print PDF
+          </Button>
         </div>
       </div>
 
-      <Table columns={columns} dataSource={searchResults} bordered />
+      <Table
+        columns={columns}
+        dataSource={searchResults}
+        bordered
+        ref={tableRef}
+      />
 
       {popupModal && (
         <Modal
@@ -137,7 +181,7 @@ const ManagePatient = () => {
             initialValues={editPatient || {}}
             onFinish={handleSubmit}
           >
-            <Form.Item
+           <Form.Item
               name="name"
               label="Name"
               rules={[{ required: true, message: "Please enter the patient's name" },
