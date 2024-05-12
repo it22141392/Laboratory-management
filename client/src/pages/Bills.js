@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DefaultLayout from '../components/DefaultLayout';
-import { Table, Button, message, Empty, Modal } from 'antd';
-import { DeleteOutlined, FileTextOutlined, DownloadOutlined } from "@ant-design/icons";
+import { Table, Button, Empty, Modal } from 'antd';
+import { FileTextOutlined, PrinterOutlined } from "@ant-design/icons";
 import { useLocation } from 'react-router-dom';
 
 const BillPage = () => {
   const location = useLocation();
   const selectedTreatments = location.state ? location.state.treatments : [];
-  const [treatments, setTreatments] = useState(selectedTreatments);
+  const [treatments] = useState(selectedTreatments);
   const [subTotal, setSubTotal] = useState(0);
   const [isInvoiceModalVisible, setIsInvoiceModalVisible] = useState(false);
   const invoiceModalRef = useRef(null);
@@ -25,12 +25,6 @@ const BillPage = () => {
     setSubTotal(total);
   };
 
-  const handleDelete = (treatment) => {
-    const updatedTreatments = treatments.filter((t) => t.id !== treatment.id);
-    setTreatments(updatedTreatments);
-    message.success('Treatment removed from bill successfully');
-  };
-
   const showInvoiceModal = () => {
     setIsInvoiceModalVisible(true);
   };
@@ -39,45 +33,26 @@ const BillPage = () => {
     setIsInvoiceModalVisible(false);
   };
 
-  const handleDownloadInvoice = () => {
-    const currentDate = new Date().toLocaleDateString('en-US');
-    const invoiceContent = `
-      Invoice Details:
-
-      Date: ${currentDate}
-    
-      ${treatments.map((treatment) => (
-        `${treatment.Treatment} - $${treatment.price} `
-      )).join('\n')}
-      
-      Total: $${subTotal.toFixed(2)}
-    `;
-
-      
-
-
-    const blob = new Blob([invoiceContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'invoice.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handlePrintInvoice = () => {
+    const invoiceModal = invoiceModalRef.current;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice</title>
+        </head>
+        <body>
+          ${invoiceModal.innerHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   const columns = [
     { title: 'Treatment', dataIndex: 'Treatment' },
     { title: 'Price', dataIndex: 'price' },
-    {
-      title: 'Action',
-      dataIndex: 'action',
-      render: (text, treatment) => (
-        <Button icon={<DeleteOutlined />} onClick={() => handleDelete(treatment)} />
-      ),
-    },
   ];
 
   return (
@@ -104,8 +79,8 @@ const BillPage = () => {
         visible={isInvoiceModalVisible}
         onCancel={handleInvoiceModalCancel}
         footer={[
-          <Button key="download" type="primary" icon={<DownloadOutlined />} onClick={handleDownloadInvoice}>
-            Download Invoice
+          <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={handlePrintInvoice}>
+            Print Invoice
           </Button>,
         ]}
       >
@@ -114,7 +89,7 @@ const BillPage = () => {
           <ul>
             {treatments.map((treatment) => (
               <li key={treatment.id}>
-                {treatment.name} - ${treatment.price}
+                {treatment.Treatment} - ${treatment.price}
               </li>
             ))}
           </ul>
